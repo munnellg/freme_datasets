@@ -30,7 +30,7 @@ are listed below.
 Returns a list of all datasets currently stored by Freme. To do this, run the
 script with no arguments
 
-`./freem_datasets.py`
+`./freme_datasets.py`
 
 ###Examine a Specific Dataset
 
