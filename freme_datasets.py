@@ -19,14 +19,6 @@ def build_opt_parser():
                         metavar="string",
                         help="The name of the dataset we're targeting" )
 
-    parser.add_option ( "-D",
-                        "--dataset-description",
-                        action="store",
-                        dest="dataset_description",
-                        default="",
-                        metavar="string",
-                        help="The a description of the dataset we're targeting." )
-
     parser.add_option ( "-c",
                         "--create",
                         dest="create",
@@ -65,10 +57,13 @@ def send_request( dataset="", headers=dict(), query_string=None, method="GET", b
     headers["User-Agent"]     = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0)"
     headers["Accept-Charset"] = "utf-8"
     headers["X-Auth-Token"]   =  auth_token
-    headers["Content-Type"]   =  "text/n3"
+    headers["Content-Type"]   =  "application/n-triples"
+    headers["Language"]       =  "en"
 
+    
     if query_string != None:
         query_string = urlencode(query_string)
+    
         if target[-1] == "/":
             target = target[:-1]
 
@@ -109,12 +104,15 @@ def dataset_examine( name ):
         print(error)
         exit()
 
-def dataset_create( name, description="" ):
+def dataset_create( name, vis, description ):
 
     data = {
         "name"        : name,
-        "description" : description
+        "description" : description,
+        "visibility"  : vis
     }
+
+    print(data)
 
     try:
         return send_request( method="POST", query_string=data )
@@ -133,19 +131,22 @@ def dataset_delete( name ):
         print(error)
         exit()
 
-def dataset_load( name, data ):
-
+def dataset_load( name, data, lang ):
+    qs = {        
+        "language"    : lang,        
+    }
     with open(data, "r") as f:
         count = 1
         while True:
             lines = list(islice(f, chunk_size))
             if not lines:
                 break
-            data = "\n".join(lines)
+            data = "".join(lines)
             try:
-                send_request( name, method="PUT", body=data )
-                print("Loaded {} entities so far".format(chunk_size*count))
-                count += 1
+                send_request( name, method="PUT", body=data, query_string=qs )
+                count += len(lines)
+                print("Loaded {} entities so far".format(count))
+                
             except Exception as error:
                 # Print error message in the event of an exception and return
                 # an empty string
@@ -159,13 +160,18 @@ def main():
 
     if options.dataset_name != None:
         if options.create:
-            print("Creating new dataset: {}".format(options.dataset_name))
-            print(dataset_create(options.dataset_name, options.dataset_description))
+            print("Creating new dataset: {}".format(options.dataset_name))                        
+            vis = input("Visibility [private]: ")
+            vis = vis if vis != "" else "private"   
+            desc = input("Description: ")            
+            print(dataset_create(options.dataset_name, vis, desc))
 
         if options.load:
             print("Loading dataset {}".format(options.dataset_name))
+            lang = input("Language [en]: ")
+            lang = lang if lang != "" else "en"
             for filename in args:
-                dataset_load(options.dataset_name, filename)
+                dataset_load(options.dataset_name, filename, lang)
 
         if options.delete:
             print("Are you sure you want to delete this dataset?")
